@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%238df0c1'/></svg>" />
+    <title>Кухня Мира</title>
+  </head>
+  <body>
+    <div id="startup-status" role="status" style="position:fixed;inset:0;z-index:10000;display:grid;place-content:center;padding:24px;background:#173f43;color:#fff;font:18px/1.6 system-ui;text-align:center">
+      <h1>🌍 Кухня Мира</h1><p id="startup-message">Загружаем Тоскану…</p>
+      <noscript>Для игры необходимо включить JavaScript в браузере.</noscript>
+    </div>
+    <script>
+      (() => {
+        const panel = document.getElementById('startup-status');
+        const message = document.getElementById('startup-message');
+        let failed = false;
+        window.__showGameError = (error) => {
+          failed = true;
+          panel.style.display = 'grid';
+          message.textContent = 'Не удалось запустить 3D-игру. Попробуй Chrome или Edge с включённым графическим ускорением. Ошибка: ' + String(error && error.message || error);
+        };
+        window.addEventListener('error', event => window.__showGameError(event.error || event.message));
+        window.addEventListener('unhandledrejection', event => window.__showGameError(event.reason));
+        const check = setInterval(() => {
+          if (window.__GAME_READY__ && !failed) { panel.style.display = 'none'; clearInterval(check); }
+        }, 100);
+        setTimeout(() => {
+          if (!window.__GAME_READY__ && !failed) message.textContent = 'Загрузка не завершилась. Если открыт предпросмотр скачанного файла, сохрани его и открой в Chrome или Edge. Для веб-версии обнови страницу. Если проблема остаётся, пришли этот экран.';
+        }, 15000);
+      })();
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,756 @@
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0e12;
+  font-family: ui-rounded, "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+}
+
+#game-root {
+  position: fixed;
+  inset: 0;
+}
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+#ui-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.modal-wrap, .dialog, .hud-bar, .restaurant, .prompt {
+  pointer-events: auto;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ------------------------------ Верхняя панель ------------------------------ */
+
+.hud-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(18, 22, 40, 0.78);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 8px 18px;
+  backdrop-filter: blur(6px);
+}
+
+.hud-stat {
+  color: #ffe66d;
+  font-weight: 800;
+  font-size: 17px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.hud-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.hud-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.1s;
+}
+
+.hud-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(1.12);
+}
+
+/* ------------------------------ Инвентарь и миссия ------------------------------ */
+
+.hud-side {
+  position: absolute;
+  left: 12px;
+  top: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 280px;
+}
+
+.hud-inv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.inv-chip {
+  background: rgba(18, 22, 40, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  font-size: 22px;
+  padding: 4px 8px;
+}
+
+.inv-empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  background: rgba(18, 22, 40, 0.6);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.hud-quest {
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.95), rgba(244, 162, 97, 0.95));
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.quest-label {
+  font-weight: 900;
+  color: #7a3e00;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.quest-text {
+  color: #3d2200;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* ------------------------------ Промпт, тост, баннер ------------------------------ */
+
+.prompt {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 22, 40, 0.88);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 2px solid #ffd166;
+  animation: prompt-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes prompt-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.06); }
+}
+
+.toast {
+  position: absolute;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(42, 157, 143, 0.95);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 10px 24px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.3s ease-out;
+}
+
+@keyframes toast-in {
+  from { transform: translate(-50%, -16px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.banner {
+  position: absolute;
+  top: 32%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.banner-text {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff6b6b, #ffa94d);
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(17px, 2.6vw, 26px);
+  padding: 16px 34px;
+  border-radius: 20px;
+  border: 3px solid #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  animation: banner-pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
+  max-width: 80vw;
+}
+
+@keyframes banner-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ------------------------------ Диалоги ------------------------------ */
+
+.dialog {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(620px, 92vw);
+  background: rgba(14, 17, 32, 0.94);
+  border: 3px solid #ffd166;
+  border-radius: 20px;
+  padding: 16px 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: dialog-in 0.25s ease-out;
+}
+
+@keyframes dialog-in {
+  from { transform: translate(-50%, 20px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.dialog-speaker {
+  color: #ffd166;
+  font-weight: 900;
+  font-size: 17px;
+}
+
+.dialog-text {
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.45;
+  margin: 10px 0 14px;
+}
+
+.dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.dialog-choice,
+.dialog-next {
+  background: linear-gradient(135deg, #2a9d8f, #21867a);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.1s;
+}
+
+.dialog-choice:hover,
+.dialog-next:hover {
+  transform: scale(1.05);
+  filter: brightness(1.15);
+}
+
+.dialog-next {
+  background: linear-gradient(135deg, #e63946, #c1121f);
+}
+
+/* ------------------------------ Заголовок ------------------------------ */
+
+.modal-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 18, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.modal {
+  width: min(680px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: linear-gradient(160deg, #141a33, #0e1226);
+  border: 3px solid rgba(255, 209, 102, 0.6);
+  border-radius: 26px;
+  padding: 28px 30px;
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: modal-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes modal-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.title-emoji {
+  font-size: 54px;
+}
+
+.title-logo {
+  margin: 4px 0 6px;
+  font-size: clamp(34px, 6vw, 56px);
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #ffd166, #ff6b6b, #c77dff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+.title-tag {
+  color: #9fb3d9;
+  font-size: 15px;
+  margin: 0 0 18px;
+}
+
+.title-how {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 18px 0;
+  text-align: left;
+}
+
+.how-item {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.title-save {
+  color: #ffe66d;
+  font-weight: 700;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.title-hint,
+.modal-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  margin-top: 14px;
+}
+
+/* ------------------------------ Кнопки ------------------------------ */
+
+.big-btn {
+  display: block;
+  margin: 14px auto;
+  background: linear-gradient(135deg, #e63946, #ff7b00);
+  color: #fff;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 1px;
+  border: none;
+  border-radius: 18px;
+  padding: 16px 38px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(230, 57, 70, 0.45);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.big-btn:hover {
+  transform: scale(1.06) rotate(-1deg);
+  box-shadow: 0 12px 32px rgba(230, 57, 70, 0.65);
+}
+
+.menu-btn {
+  display: block;
+  margin: 8px auto;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+  padding: 11px 26px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.menu-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.04);
+}
+
+.menu-btn.danger {
+  border-color: rgba(230, 57, 70, 0.6);
+  color: #ff9b9b;
+}
+
+.modal-title {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 6px 0;
+}
+
+.modal-emoji {
+  font-size: 44px;
+}
+
+.modal-emoji.big {
+  font-size: 72px;
+  animation: prompt-pulse 1.4s ease-in-out infinite;
+}
+
+.modal-text {
+  color: #cdd8f0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ------------------------------ Ресторан ------------------------------ */
+
+.restaurant {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(680px, 94vw);
+  background: rgba(14, 17, 32, 0.92);
+  border: 3px solid #f4a261;
+  border-radius: 20px;
+  padding: 14px 18px;
+  pointer-events: auto;
+}
+
+.rest-top {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.rest-stat {
+  color: #ffe66d;
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.rest-stat.angry {
+  color: #ff9b9b;
+}
+
+.rest-order-label {
+  color: #9fb3d9;
+  font-size: 13px;
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+.rest-seq {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.rest-chip {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #cdd8f0;
+}
+
+.rest-chip.active {
+  border-color: #ffd166;
+  background: rgba(255, 209, 102, 0.18);
+  color: #fff;
+  animation: prompt-pulse 1s ease-in-out infinite;
+}
+
+.rest-chip.done {
+  background: rgba(42, 157, 143, 0.4);
+  color: #8ef0e2;
+  text-decoration: line-through;
+}
+
+.rest-timer {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.rest-timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2a9d8f, #80ed99);
+  border-radius: 6px;
+  transition: width 0.2s linear;
+}
+
+.rest-timer-fill.urgent {
+  background: linear-gradient(90deg, #e63946, #ff7b00);
+}
+
+.rest-steps {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.rest-step-btn {
+  background: linear-gradient(160deg, #2b3560, #1c2342);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 10px 12px;
+  cursor: pointer;
+  white-space: pre-line;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.rest-step-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  border-color: #ffd166;
+}
+
+.rest-message {
+  text-align: center;
+  color: #ffd166;
+  font-weight: 700;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* ------------------------------ Рецепт (реальная миссия) ------------------------------ */
+
+.recipe-card {
+  text-align: left;
+}
+
+.recipe-card .modal-title,
+.recipe-card .modal-emoji,
+.recipe-card .modal-text {
+  text-align: center;
+  display: block;
+}
+
+.recipe-section {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 14px 18px;
+  margin: 14px 0;
+}
+
+.recipe-h {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #ffd166;
+}
+
+.shop-list,
+.recipe-steps,
+.cam-list {
+  margin: 0;
+  padding-left: 22px;
+  color: #dfe7fa;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.shop-total {
+  list-style: none;
+  margin-left: -22px;
+  font-weight: 900;
+  color: #80ed99;
+  margin-top: 4px;
+}
+
+.photo-box {
+  text-align: center;
+}
+
+.photo-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, #2a9d8f, #21867a);
+  color: #fff;
+  font-weight: 900;
+  font-size: 17px;
+  border-radius: 14px;
+  padding: 13px 30px;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.photo-btn:hover {
+  transform: scale(1.06);
+}
+
+.photo-preview {
+  display: block;
+  margin: 10px auto;
+  max-width: 320px;
+  max-height: 220px;
+  border-radius: 14px;
+  border: 3px solid #80ed99;
+}
+
+/* ------------------------------ Карта мира ------------------------------ */
+
+.map-card .modal-title {
+  text-align: center;
+}
+
+.world-map {
+  position: relative;
+  height: 320px;
+  margin: 14px 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 40% 46% at 50% 38%, #74c69d 0%, #74c69d 60%, transparent 61%),
+    radial-gradient(ellipse 16% 22% at 86% 33%, #74c69d 0%, #74c69d 60%, transparent 61%),
+    radial-gradient(ellipse 12% 16% at 16% 45%, #74c69d 0%, #74c69d 60%, transparent 61%),
+    radial-gradient(ellipse 14% 20% at 62% 22%, #74c69d 0%, #74c69d 60%, transparent 61%),
+    radial-gradient(ellipse 14% 18% at 70% 48%, #74c69d 0%, #74c69d 60%, transparent 61%),
+    linear-gradient(180deg, #48a9d8 0%, #2d7fb8 100%);
+  border: 3px solid rgba(255, 255, 255, 0.25);
+}
+
+.map-sea {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 22px;
+  opacity: 0.6;
+}
+
+.map-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+
+.pin-emoji {
+  font-size: 26px;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+  animation: prompt-pulse 1.6s ease-in-out infinite;
+}
+
+.pin-thumb {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 74px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #ffd166;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.map-pin.locked .pin-emoji {
+  animation: none;
+  opacity: 0.8;
+}
+
+.pin-label {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 13, 26, 0.95);
+  border: 2px solid #ffd166;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  width: 190px;
+  z-index: 5;
+}
+
+.map-pin:hover .pin-label {
+  display: flex;
+}
+
+.pin-label b {
+  color: #ffd166;
+}
+
+.pin-label span {
+  color: #cdd8f0;
+  font-size: 12px;
+}
+
+.pin-photo {
+  width: 100%;
+  border-radius: 8px;
+  border: 2px solid #80ed99;
+}
+
+/* ------------------------------ Победа ------------------------------ */
+
+.victory {
+  border-color: #80ed99;
+}
+
+.victory-stats {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+
+.gameover {
+  border-color: #e63946;
+}
+
+/* ------------------------------ Мобильные ------------------------------ */
+
+@media (max-width: 640px) {
+  .hud-side {
+    max-width: 210px;
+  }
+  .title-how {
+    grid-template-columns: 1fr;
+  }
+  .hud-bar {
+    gap: 8px;
+    padding: 6px 12px;
+  }
+  .hud-stat {
+    font-size: 14px;
+  }
+}
+
+.real-note { box-sizing: border-box; width: 100%; min-height: 110px; padding: 12px; border: 2px solid #ffd166; border-radius: 10px; font: inherit; resize: vertical; }
+.real-check { display: flex; gap: 10px; margin: 12px 0; align-items: center; }

@@ -1,0 +1,34 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-gl=swiftshader']});
+try {
+ const page=await browser.newPage({viewport:{width:960,height:640}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.goto('http://127.0.0.1:8765/');await page.waitForFunction(()=>window.__GAME_READY__===true);
+ await page.getByRole('button',{name:'▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ'}).click();
+ await page.evaluate(()=>window.__gameTest.teleport(12,-7));
+ await page.keyboard.down('KeyW');await page.waitForTimeout(650);await page.keyboard.up('KeyW');
+ assert((await page.evaluate(()=>window.__gameProbe())).z < -8.2);
+ await page.keyboard.press('KeyE');await page.locator('.dialog').waitFor();
+ assert.match(await page.locator('.dialog-speaker').innerText(),/Лука/);
+ console.log('PASS actual local launcher serves game and Luca is reachable on foot');
+ await page.keyboard.press('KeyP');await page.getByRole('button',{name:'🔄 Начать заново',exact:true}).click();
+ assert.equal(await page.locator('.dialog').count(),0);
+ assert.equal((await page.evaluate(()=>window.__gameTest.state())).paused,false);
+ console.log('PASS restart clears open NPC dialog and pause');
+ const before=await page.evaluate(()=>window.__gameProbe());await page.keyboard.down('KeyD');await page.waitForTimeout(350);await page.keyboard.up('KeyD');
+ assert((await page.evaluate(()=>window.__gameProbe())).x>before.x);
+ await page.evaluate(()=>window.__gameTest.teleport(-10,-5.5));await page.waitForTimeout(150);
+ const button=await page.locator('.prompt').boundingBox();await page.mouse.click(button.x+button.width/2,button.y+button.height/2);
+ await page.locator('.dialog').waitFor();await page.locator('.dialog-next').click();await page.getByRole('button',{name:'🍅 Помидор!',exact:true}).click();await page.locator('.dialog-next').click();console.log('PASS animated screen action button receives a real mouse click');
+ await page.evaluate(()=>window.__gameTest.teleport(0,12));
+ const touchBefore=await page.evaluate(()=>window.__gameProbe());
+ const cdp=await page.context().newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:100,y:500}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:160,y:500}]});
+ await page.waitForTimeout(500);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ assert((await page.evaluate(()=>window.__gameProbe())).x>touchBefore.x);console.log('PASS browser touch reaches canvas and moves player');
+ await page.screenshot({path:'/workspace/game-cook-preview.png'});
+ assert.deepEqual(errors,[]);console.log('PASS local launcher, render and keyboard movement without browser exceptions');
+ const noGL=await browser.newPage();await noGL.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
+ await noGL.goto('http://127.0.0.1:8765/');await noGL.waitForFunction(()=>document.querySelector('#startup-message').textContent.includes('Ошибка:'));console.log('PASS unavailable WebGL shows a readable error');
+} finally {await browser.close()}

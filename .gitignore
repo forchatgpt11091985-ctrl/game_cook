@@ -1,0 +1,5 @@
+# Generated duplicate files; standalone index.html is intentionally included.
+app/release/game.js
+app/release/game.css
+__pycache__/
+*.pyc

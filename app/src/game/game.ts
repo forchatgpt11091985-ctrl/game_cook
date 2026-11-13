@@ -4,6 +4,7 @@
  */
 import * as THREE from "three";
 import { createRenderer } from "./renderer";
+import { surface, setDressing, enrichVillage, batchStaticWorld } from "./art";
 import { GameLoop } from "./engine";
 import { Input } from "./input";
 import { AudioSystem, type SfxId } from "./audio";
@@ -59,6 +60,9 @@ export class KitchenWorldGame {
   private audio = new AudioSystem();
   private hud: Hud;
   private clock = new THREE.Clock();
+  private renderDirty = true;
+  private renderedStatic = false;
+  private lastRender = -Infinity;
   private mode: Mode = "title";
   private paused = false;
 
@@ -68,12 +72,12 @@ export class KitchenWorldGame {
   };
 
   /* Игрок */
-  private player = buildCharacter({ bodyColor: 0xe63946, hat: "chef", apron: true });
-  private playerPos = new THREE.Vector3(0, 0, 12);
-  private playerYaw = 0;
+  private player = buildCharacter({ bodyColor: 0x407d7d, hat: "chef", apron: true, scale: .96 });
+  private playerPos = new THREE.Vector3(0, 0, 9);
+  private playerYaw = Math.PI;
   private walkPhase = 0;
   private camYaw = 0;
-  private camPitch = 0.42;
+  private camPitch = 0.25;
 
   /* Мир */
   private colliders: Obstacle[] = [];
@@ -129,14 +133,19 @@ export class KitchenWorldGame {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    this.scene.background = new THREE.Color(0x9bd7f5);
-    this.scene.fog = new THREE.Fog(0x9bd7f5, 45, 90);
+    this.scene.background = new THREE.Color(0xc1dce5);
+    this.scene.fog = new THREE.Fog(0xc1dce5, 40, 140);
 
     this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 200);
-    this.camera.position.set(0, 5, 20);
+    this.camera.position.set(0, 7, 22);
+    this.camera.lookAt(0, 1, -4);
 
     this.buildLights();
     this.buildWorld();
+    batchStaticWorld(this.scene, new Set<THREE.Object3D>([
+      this.villain.group, this.doorMarker, ...this.npcs.map(n=>n.rig.group),
+      ...this.basils.map(b=>b.group), ...this.clouds,
+    ]));
     this.buildRestaurant();
     this.buildPlayer();
 
@@ -184,9 +193,12 @@ export class KitchenWorldGame {
   /* ============================== Мир ============================== */
 
   private buildLights() {
-    this.scene.add(new THREE.HemisphereLight(0xcfefff, 0x7a9e5c, 0.9));
-    const sun = new THREE.DirectionalLight(0xfff3d6, 1.7);
-    sun.position.set(18, 30, 12);
+    this.scene.add(new THREE.HemisphereLight(0xdce9f5, 0xb4a384, 1.1));
+    const sun = new THREE.DirectionalLight(0xffd7a4, 3.4);
+    sun.position.set(-18, 28, 15);
+    sun.shadow.bias = -.0003;
+    sun.shadow.normalBias = .03;
+    sun.shadow.radius = 3;
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -35;
@@ -203,20 +215,20 @@ export class KitchenWorldGame {
 
   private buildWorld() {
     // земля
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 48), mat(0x86c86a));
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(110, 64), surface(0x8fa875));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     this.scene.add(ground);
 
     // площадь-камень
-    const piazza = new THREE.Mesh(new THREE.CircleGeometry(14, 36), mat(0xd9c9a8));
+    const piazza = new THREE.Mesh(new THREE.CircleGeometry(16, 64), surface(0xffffff,"paving"));
     piazza.rotation.x = -Math.PI / 2;
     piazza.position.y = 0.02;
     piazza.receiveShadow = true;
     this.scene.add(piazza);
 
     // дорожки
-    const path = new THREE.Mesh(new THREE.PlaneGeometry(5, 30), mat(0xcbb894));
+    const path = new THREE.Mesh(new THREE.PlaneGeometry(5, 30), surface(0xffffff,"paving"));
     path.rotation.x = -Math.PI / 2;
     path.position.set(0, 0.01, 14);
     path.receiveShadow = true;
@@ -262,21 +274,16 @@ export class KitchenWorldGame {
 
     // пиццерия шефа Марко
     const pizzeria = buildHouse(7, 4, 6, 0xf8ad9d);
-    pizzeria.position.set(8, 0, 12);
-    pizzeria.rotation.y = Math.PI;
+    pizzeria.position.set(8, 0, -5);
+    pizzeria.rotation.y = 0;
     this.scene.add(pizzeria);
-    this.addObstacle(8, 12, 4.4);
-    // вывеска
-    const sign = buildNameTag("Pizzeria di Marco", "🍕");
-    sign.position.set(8, 5.2, 8.6);
-    this.scene.add(sign);
+    this.addObstacle(8, -5, 4.4);
     // точка входа (дверь)
-    this.doorPos = new THREE.Vector3(8, 0, 8.4);
-    this.addObstacle(5.4, 9.4, 0.9);
-    this.addObstacle(10.6, 9.4, 0.9);
+    this.doorPos = new THREE.Vector3(8, 0, -1.4);
+
 
     // рынок
-    const stallColors = [0xe63946, 0x2a9d8f, 0xf4a261];
+    const stallColors = [0x7c9168, 0xcda873, 0x84997b];
     stallColors.forEach((c, i) => {
       const stall = buildStall(c);
       stall.position.set(-12 + i * 4.2, 0, -4);
@@ -325,15 +332,19 @@ export class KitchenWorldGame {
     }
 
     // солнце (декоративное)
-    const sunBall = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffe66d }));
+    const sunBall = new THREE.Mesh(new THREE.SphereGeometry(3, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffedcc }));
     sunBall.position.set(35, 30, -40);
     this.scene.add(sunBall);
+
+    setDressing(this.scene);
+    enrichVillage(this.scene);
+    for(const [x,z,r] of [[-6,6,1.6],[11.5,3,1.6],[-6.5,8.5,.5],[-3.3,1.6,.8],[3.3,1.6,.8]]) this.addObstacle(x,z,r);
 
     // NPC
     for (const def of NPCS) {
       const rig = buildCharacter({ bodyColor: def.color, hat: def.id === "marco" ? "chef" : def.id === "luca" ? "straw" : "none", scale: 1 });
       rig.group.position.set(...def.pos);
-      rig.group.rotation.y = Math.random() * Math.PI * 2;
+      rig.group.rotation.y = def.id === "nonna" ? .4 : -.35;
       this.scene.add(rig.group);
       const tag = buildNameTag(def.name, def.emoji);
       tag.position.set(def.pos[0], 2.6, def.pos[2]);
@@ -352,7 +363,7 @@ export class KitchenWorldGame {
       new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.7, side: THREE.DoubleSide }),
     );
     doorMarker.rotation.x = -Math.PI / 2;
-    doorMarker.position.set(8, 0.05, 8.4);
+    doorMarker.position.set(8, 0.05, -1.4);
     this.scene.add(doorMarker);
     this.doorMarker = doorMarker;
   }
@@ -843,7 +854,7 @@ export class KitchenWorldGame {
 
   private returnFromRestaurant() {
     // вернуть игрока к двери пиццерии
-    this.playerPos.set(8, 0, 6.5);
+    this.playerPos.set(8, 0, 1);
     this.camYaw = 0;
     this.playerYaw = 0;
   }
@@ -1012,10 +1023,10 @@ export class KitchenWorldGame {
     p.rightLeg.rotation.x = -swing;
     p.leftArm.rotation.x = -swing * 0.7;
     p.rightArm.rotation.x = swing * 0.7;
-    p.body.position.y = 0.85 + (moving ? Math.abs(Math.sin(this.walkPhase)) * 0.05 : Math.sin(this.clock.elapsedTime * 2) * 0.02);
+    p.body.position.y = 0.95 + (moving ? Math.abs(Math.sin(this.walkPhase)) * 0.05 : Math.sin(this.clock.elapsedTime * 2) * 0.02);
 
     // камера следует
-    const dist = 7;
+    const dist = 6.8;
     const cx = this.playerPos.x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * dist;
     const cz = this.playerPos.z + Math.cos(this.camYaw) * Math.cos(this.camPitch) * dist;
     const cy = this.playerPos.y + 2 + Math.sin(this.camPitch) * dist;
@@ -1024,8 +1035,9 @@ export class KitchenWorldGame {
 
     // NPC idle-анимация
     for (const n of this.npcs) {
+      n.tag.visible = this.playerPos.distanceTo(n.rig.group.position) < 5.5;
       n.bobPhase += dt;
-      n.rig.body.position.y = 0.85 + Math.sin(n.bobPhase * 2) * 0.03;
+      n.rig.body.position.y = 0.95 + Math.sin(n.bobPhase * 2) * 0.03;
       n.rig.head.rotation.y = Math.sin(n.bobPhase * 0.7) * 0.4;
     }
 
@@ -1201,7 +1213,7 @@ export class KitchenWorldGame {
           g2.rig.group.rotation.y = Math.PI; // лицом к стойке
         }
       } else if (g2.state === "wait") {
-        g2.rig.body.position.y = 0.85 + Math.sin(this.clock.elapsedTime * 2 + gp.x) * 0.03;
+        g2.rig.body.position.y = 0.95 + Math.sin(this.clock.elapsedTime * 2 + gp.x) * 0.03;
       } else if (g2.state === "leave") {
         const target = new THREE.Vector3(60, 0, 8.5);
         const dir = target.clone().sub(gp);
@@ -1248,10 +1260,19 @@ export class KitchenWorldGame {
   /* ============================== Рендер ============================== */
 
   private render() {
+    const frozen = this.paused || this.mode === "title" || this.mode === "gameover" || this.mode === "victory";
+    if (frozen && this.renderedStatic && !this.renderDirty) return;
+    // Dialogues are DOM overlays. Avoid redrawing an almost static 3D background at 60 Hz.
+    if (!frozen && (this.hud.dialogOpen || this.hud.modalOpen) && performance.now() - this.lastRender < 100) return;
+    this.renderedStatic = frozen;
+    this.renderDirty = false;
+    this.lastRender = performance.now();
+    this.restaurant.group.visible = this.mode === "restaurant" || this.mode === "gameover";
     this.renderer.render(this.scene, this.camera);
   }
 
   private onResize = () => {
+    this.renderDirty = true;
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -1277,7 +1298,7 @@ export class KitchenWorldGame {
   debugTeleport(x: number, z: number) {
     this.playerPos.set(x, 0, z);
     this.player.group.position.copy(this.playerPos);
-    const dist = 7;
+    const dist = 6.8;
     this.camera.position.set(
       x + Math.sin(this.camYaw) * Math.cos(this.camPitch) * dist,
       2 + Math.sin(this.camPitch) * dist,
@@ -1287,6 +1308,7 @@ export class KitchenWorldGame {
 
   /** Отладочный хук: задать камеру вручную (только для диагностики). */
   debugCamera(px: number, py: number, pz: number, tx: number, ty: number, tz: number) {
+    this.renderDirty = true;
     this.camera.position.set(px, py, pz);
     this.camera.lookAt(tx, ty, tz);
   }
@@ -1295,6 +1317,8 @@ export class KitchenWorldGame {
     return {
       mode: this.mode,
       rendererMode: this.renderer.mode,
+      renderInfo: {calls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles},
+      doorPos: {x:this.doorPos.x,z:this.doorPos.z},
       paused: this.paused,
       coins: this.save.coins,
       stars: this.save.stars,

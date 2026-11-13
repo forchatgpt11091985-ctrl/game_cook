@@ -5,9 +5,9 @@ try {
  const page=await browser.newPage({viewport:{width:960,height:640}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.goto('http://127.0.0.1:8765/');await page.waitForFunction(()=>window.__GAME_READY__===true);
  await page.getByRole('button',{name:'▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ'}).click();
- await page.evaluate(()=>window.__gameTest.teleport(12,-7));
+ await page.evaluate(()=>window.__gameTest.teleport(12,-8));
  await page.keyboard.down('KeyW');await page.waitForTimeout(650);await page.keyboard.up('KeyW');
- assert((await page.evaluate(()=>window.__gameProbe())).z < -8.2);
+ assert((await page.evaluate(()=>window.__gameProbe())).z < -9.2);
  await page.keyboard.press('KeyE');await page.locator('.dialog').waitFor();
  assert.match(await page.locator('.dialog-speaker').innerText(),/Лука/);
  console.log('PASS actual local launcher serves game and Luca is reachable on foot');
@@ -30,5 +30,5 @@ try {
  await page.screenshot({path:'/workspace/game-cook-preview.png'});
  assert.deepEqual(errors,[]);console.log('PASS local launcher, render and keyboard movement without browser exceptions');
  const noGL=await browser.newPage();await noGL.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
- await noGL.goto('http://127.0.0.1:8765/');await noGL.waitForFunction(()=>window.__GAME_READY__===true);assert.equal(await noGL.evaluate(()=>window.__gameTest.state().rendererMode),'software');console.log('PASS unavailable WebGL switches to software 3D');
+ await noGL.goto('http://127.0.0.1:8765/');await noGL.waitForFunction(()=>document.querySelector('#startup-message').textContent.includes('Ошибка:'));console.log('PASS unavailable WebGL explains the failure without changing graphics');
 } finally {await browser.close()}

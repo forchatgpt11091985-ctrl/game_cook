@@ -7,22 +7,28 @@ const server = createServer((req,res)=>{res.writeHead(200,{'Content-Type':'text/
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const url=`http://127.0.0.1:${server.address().port}/Downloads/index.html`;
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-gl=swiftshader']});
-const context=await browser.newContext({viewport:{width:960,height:640}});if(process.env.NO_WEBGL) await context.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
-const page=await context.newPage();
+const context=await browser.newContext({viewport:{width:640,height:480}});if(process.env.FROM_CHASE) await context.addInitScript(()=>{
+ if(!sessionStorage.getItem('kitchen-test-seeded')) {
+  sessionStorage.setItem('kitchen-test-seeded','1');
+  localStorage.setItem('kitchenWorld.save.v1',JSON.stringify({v:1,coins:85,stars:3,fans:0,ingredients:['tomato','basil','mozzarella'],flags:{npc_nonna:true,npc_luca:true,npc_marco:true,basilQuest:true,basil_0:true,basil_1:true,basil_2:true},photo:null,served:0,bestServed:0}));
+ }
+});
+const page=await context.newPage();page.setDefaultTimeout(60000);
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 const state=()=>page.evaluate(()=>window.__gameTest.state());
 const next=()=>page.locator('.dialog-next').click();
-const teleport=async(x,z)=>{await page.evaluate(([x,z])=>window.__gameTest.teleport(x,z),[x,z]);await page.waitForTimeout(100)};
+const teleport=async(x,z)=>{await page.evaluate(([x,z])=>window.__gameTest.teleport(x,z),[x,z]);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))};
 const talk=async(x,z)=>{await teleport(x,z);await page.keyboard.press('KeyE');await page.locator('.dialog').waitFor()};
-const start=async()=>{await page.waitForFunction(()=>window.__GAME_READY__);await page.getByRole('button',{name:'▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ'}).click()};
+const start=async()=>{await page.waitForFunction(()=>window.__GAME_READY__);await page.addStyleTag({content:'* { animation: none !important; transition: none !important; }'});await page.getByRole('button',{name:'▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ'}).click()};
 const checks=[];function pass(name){checks.push(name);console.log('PASS '+name)}
 try {
- await page.goto(url);await start();if(process.env.NO_WEBGL)assert.equal((await state()).rendererMode,'software');pass('standalone starts at a nested path');
+ await page.goto(url);await start();assert.equal((await state()).rendererMode,'webgl');pass('standalone starts at a nested path');
+ if(!process.env.FROM_CHASE) {
  await page.keyboard.press('Space');await page.waitForTimeout(100);assert.equal((await state()).mode,'world');pass('title key listener removed after clicking Start');
- await page.keyboard.press('KeyP');await page.waitForFunction(()=>window.__gameTest.state().paused===true);assert.equal((await state()).paused,true);await page.keyboard.press('KeyP');await page.waitForTimeout(100);assert.equal((await state()).paused,false);pass('keyboard pause resumes');
+ await page.keyboard.press('KeyP');await page.waitForFunction(()=>window.__gameTest.state().paused===true);assert.equal((await state()).paused,true);await page.keyboard.press('KeyP');await page.waitForFunction(()=>window.__gameTest.state().paused===false);assert.equal((await state()).paused,false);pass('keyboard pause resumes');
  await talk(-10,-5.5);await next();await page.getByRole('button',{name:'🍎 Яблоко',exact:true}).click();await next();await page.getByRole('button',{name:'🍅 Помидор!',exact:true}).click();await next();assert((await state()).ingredients.includes('tomato'));pass('Nonna riddle and retry');
- await teleport(12,-7);await page.keyboard.down('KeyW');await page.waitForTimeout(650);await page.keyboard.up('KeyW');
- assert((await page.evaluate(()=>window.__gameProbe())).z < -8.2);pass('Luca field reachable by walking');
+ await teleport(12,-8);await page.keyboard.down('KeyW');await page.waitForTimeout(650);await page.keyboard.up('KeyW');
+ assert((await page.evaluate(()=>window.__gameProbe())).z < -9.2);pass('Luca field reachable by walking');
  await talk(12,-10);await next();await next();
  await teleport(8.4,-9.2);await page.waitForTimeout(1400);await page.reload();await start();assert.equal((await state()).basilCollected,1);pass('partial basil progress persists');
  for(const [x,z] of [[16.5,-10.5],[12.5,-16.5]])await teleport(x,z);
@@ -31,9 +37,10 @@ try {
  for(const answer of ['Рим','Лимоны 🍋','Спасибо']) {await page.getByRole('button',{name:answer,exact:true}).click();await next()}
  await next();assert.equal((await state()).villainActive,true);assert.match(await page.locator('.quest-text').innerText(),/Догони/);pass('Marco quiz and chase hint');
  await page.waitForTimeout(1400);await page.reload();await start();assert.equal((await state()).villainActive,true);pass('reload during theft resumes chase');
- const villain=(await state()).villainPos;await teleport(villain.x+.2,villain.z+.2);await page.keyboard.press('KeyE');await page.waitForTimeout(150);assert((await state()).ingredients.includes('flour'));assert.equal((await state()).villainActive,false);pass('villain caught, flour restored');
+ } else {assert.equal((await state()).villainActive,true);pass('resume from saved chase checkpoint');}
+ const villain=(await state()).villainPos;await page.evaluate(({x,z})=>{window.__gameTest.teleport(x+.2,z+.2);window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyE'}));window.dispatchEvent(new KeyboardEvent('keyup',{code:'KeyE'}));},villain);await page.waitForFunction(()=>window.__gameTest.state().villainActive===false);assert((await state()).ingredients.includes('flour'));assert.equal((await state()).villainActive,false);pass('villain caught, flour restored');
  await talk(6,6);await next();await page.keyboard.press('Space');assert((await state()).ingredients.includes('flour'));pass('completed NPC cannot restart chase');
- await teleport(8,8.4);await page.keyboard.press('KeyE');await page.waitForFunction(()=>window.__gameTest.state().orderActive);
+ const door=(await state()).doorPos;await teleport(door.x,door.z+1.6);await page.keyboard.press('KeyE');await page.waitForFunction(()=>window.__gameTest.state().orderActive);
  // Deliberately wrong steps cause a loss; retry must start a playable restaurant.
  for(let i=0;i<3;i++)await page.getByRole('button',{name:/Подать гостю/}).click();
  await page.getByRole('button',{name:'🍕 Ещё раз!',exact:true}).click();pass('restaurant loss and retry');
@@ -62,6 +69,6 @@ try {
  assert.deepEqual(errors,[]);pass('zero uncaught browser errors');
  // Unsupported graphics must produce readable feedback rather than a blank screen.
  const noGL=await context.newPage();await noGL.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
- await noGL.goto(url);await noGL.waitForFunction(()=>window.__GAME_READY__===true);assert.equal(await noGL.evaluate(()=>window.__gameTest.state().rendererMode),'software');assert(await noGL.locator('svg path').count()>10);pass('WebGL failure switches to rendered software 3D');await noGL.close();
+ await noGL.goto(url);await noGL.waitForFunction(()=>document.querySelector('#startup-message').textContent.includes('Ошибка:'));assert.equal(await noGL.locator('svg').count(),0);pass('WebGL failure is explicit, no automatic quality downgrade');await noGL.close();
  console.log(JSON.stringify({passed:checks.length,checks},null,2));
 } finally {await browser.close();server.close()}

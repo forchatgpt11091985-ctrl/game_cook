@@ -7,7 +7,8 @@ const server = createServer((req,res)=>{res.writeHead(200,{'Content-Type':'text/
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const url=`http://127.0.0.1:${server.address().port}/Downloads/index.html`;
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-gl=swiftshader']});
-const context=await browser.newContext({viewport:{width:960,height:640}});const page=await context.newPage();
+const context=await browser.newContext({viewport:{width:960,height:640}});if(process.env.NO_WEBGL) await context.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
+const page=await context.newPage();
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 const state=()=>page.evaluate(()=>window.__gameTest.state());
 const next=()=>page.locator('.dialog-next').click();
@@ -16,9 +17,9 @@ const talk=async(x,z)=>{await teleport(x,z);await page.keyboard.press('KeyE');aw
 const start=async()=>{await page.waitForFunction(()=>window.__GAME_READY__);await page.getByRole('button',{name:'▶ НАЧАТЬ ПРИКЛЮЧЕНИЕ'}).click()};
 const checks=[];function pass(name){checks.push(name);console.log('PASS '+name)}
 try {
- await page.goto(url);await start();pass('standalone starts at a nested path');
+ await page.goto(url);await start();if(process.env.NO_WEBGL)assert.equal((await state()).rendererMode,'software');pass('standalone starts at a nested path');
  await page.keyboard.press('Space');await page.waitForTimeout(100);assert.equal((await state()).mode,'world');pass('title key listener removed after clicking Start');
- await page.keyboard.press('KeyP');assert.equal((await state()).paused,true);await page.keyboard.press('KeyP');await page.waitForTimeout(100);assert.equal((await state()).paused,false);pass('keyboard pause resumes');
+ await page.keyboard.press('KeyP');await page.waitForFunction(()=>window.__gameTest.state().paused===true);assert.equal((await state()).paused,true);await page.keyboard.press('KeyP');await page.waitForTimeout(100);assert.equal((await state()).paused,false);pass('keyboard pause resumes');
  await talk(-10,-5.5);await next();await page.getByRole('button',{name:'🍎 Яблоко',exact:true}).click();await next();await page.getByRole('button',{name:'🍅 Помидор!',exact:true}).click();await next();assert((await state()).ingredients.includes('tomato'));pass('Nonna riddle and retry');
  await teleport(12,-7);await page.keyboard.down('KeyW');await page.waitForTimeout(650);await page.keyboard.up('KeyW');
  assert((await page.evaluate(()=>window.__gameProbe())).z < -8.2);pass('Luca field reachable by walking');
@@ -61,6 +62,6 @@ try {
  assert.deepEqual(errors,[]);pass('zero uncaught browser errors');
  // Unsupported graphics must produce readable feedback rather than a blank screen.
  const noGL=await context.newPage();await noGL.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
- await noGL.goto(url);await noGL.waitForFunction(()=>document.querySelector('#startup-message').textContent.includes('Ошибка:'));pass('WebGL failure produces visible explanation');await noGL.close();
+ await noGL.goto(url);await noGL.waitForFunction(()=>window.__GAME_READY__===true);assert.equal(await noGL.evaluate(()=>window.__gameTest.state().rendererMode),'software');assert(await noGL.locator('svg path').count()>10);pass('WebGL failure switches to rendered software 3D');await noGL.close();
  console.log(JSON.stringify({passed:checks.length,checks},null,2));
 } finally {await browser.close();server.close()}

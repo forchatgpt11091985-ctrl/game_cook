@@ -30,5 +30,5 @@ try {
  await page.screenshot({path:'/workspace/game-cook-preview.png'});
  assert.deepEqual(errors,[]);console.log('PASS local launcher, render and keyboard movement without browser exceptions');
  const noGL=await browser.newPage();await noGL.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(String(kind).startsWith('webgl'))return null;return original.call(this,kind,...args)}});
- await noGL.goto('http://127.0.0.1:8765/');await noGL.waitForFunction(()=>document.querySelector('#startup-message').textContent.includes('Ошибка:'));console.log('PASS unavailable WebGL shows a readable error');
+ await noGL.goto('http://127.0.0.1:8765/');await noGL.waitForFunction(()=>window.__GAME_READY__===true);assert.equal(await noGL.evaluate(()=>window.__gameTest.state().rendererMode),'software');console.log('PASS unavailable WebGL switches to software 3D');
 } finally {await browser.close()}

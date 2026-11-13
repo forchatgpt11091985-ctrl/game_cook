@@ -3,6 +3,7 @@
  * злодей Критик Крюк, ресторанная миссия, реальная миссия с фото, экономика и сохранения.
  */
 import * as THREE from "three";
+import { createRenderer } from "./renderer";
 import { GameLoop } from "./engine";
 import { Input } from "./input";
 import { AudioSystem, type SfxId } from "./audio";
@@ -50,7 +51,7 @@ function makeCoinTexture(): THREE.Texture {
 }
 
 export class KitchenWorldGame {
-  private renderer: THREE.WebGLRenderer;
+  private renderer: ReturnType<typeof createRenderer>;
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private loop: GameLoop;
@@ -122,7 +123,7 @@ export class KitchenWorldGame {
   constructor(private canvas: HTMLCanvasElement, overlay: HTMLElement) {
     this.loadSave();
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    this.renderer = createRenderer(canvas);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.shadowMap.enabled = true;
@@ -1293,6 +1294,7 @@ export class KitchenWorldGame {
   debugState() {
     return {
       mode: this.mode,
+      rendererMode: this.renderer.mode,
       paused: this.paused,
       coins: this.save.coins,
       stars: this.save.stars,
